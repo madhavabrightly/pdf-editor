@@ -32,3 +32,6 @@ desktop.ini
 # Runtime artifacts
 /dist/
 *.rpfg.tmp
+
+# Local assistant/tool state
+/.commandcode/
