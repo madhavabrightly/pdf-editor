@@ -1,0 +1,34 @@
+# Fetched dependencies (see scripts/fetch_deps.ps1)
+/third_party/
+
+# Build output
+/build/
+/out/
+/install/
+
+# MSVC / MSBuild intermediates
+*.obj
+*.pdb
+*.ilk
+*.exp
+*.iobj
+*.ipdb
+*.log
+*.tlog
+.vs/
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+CMakeUserPresets.json
+cmake_install.cmake
+
+# Editor / OS
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+
+# Runtime artifacts
+/dist/
+*.rpfg.tmp

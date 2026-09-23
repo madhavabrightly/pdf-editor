@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Rpfg</title>
+    <link rel="stylesheet" href="css/app.css" />
+  </head>
+  <body>
+    <header class="toolbar">
+      <button id="open-button" class="button button--primary" type="button">Open PDF</button>
+      <span class="toolbar__file" id="file-name" title="">No document open</span>
+      <span class="toolbar__dirty" id="dirty-dot" title="Unsaved changes" hidden>&#9679;</span>
+
+      <span class="toolbar__spacer"></span>
+
+      <div class="toolbar__group">
+        <button id="zoom-out" class="button button--icon" type="button" title="Zoom out">&minus;</button>
+        <span class="toolbar__zoom" id="zoom-level">100%</span>
+        <button id="zoom-in" class="button button--icon" type="button" title="Zoom in">+</button>
+        <button id="zoom-fit" class="button" type="button" title="Fit page width">Fit</button>
+      </div>
+
+      <div class="toolbar__group">
+        <span class="toolbar__page" id="page-indicator">&ndash;&nbsp;/&nbsp;&ndash;</span>
+      </div>
+
+      <div class="toolbar__group">
+        <select id="font-picker" class="select" title="Font for inserted / edited text"></select>
+        <input id="font-size" class="input-num" type="number" min="4" max="400" step="1" value="14"
+               title="Font size" />
+        <input id="text-color" class="input-color" type="color" value="#111111"
+               title="Text colour" />
+        <button id="spacing-down" class="button button--icon" type="button"
+                title="Decrease space between lines">&#9660;</button>
+        <span class="toolbar__zoom" id="spacing-level" title="Line spacing">1.0&times;</span>
+        <button id="spacing-up" class="button button--icon" type="button"
+                title="Increase space between lines">&#9650;</button>
+      </div>
+
+      <div class="toolbar__group">
+        <button id="edit-button" class="button" type="button" aria-pressed="false"
+                title="Edit text — click text on the page, or double-click it">Edit text</button>
+        <button id="objects-button" class="button" type="button" aria-pressed="false"
+                title="Objects — click a line, shape or image to select it, Delete to remove it">Objects</button>
+        <button id="add-text-button" class="button" type="button" aria-pressed="false"
+                title="Add text — click on the page to place it">Add text</button>
+        <button id="erase-button" class="button" type="button" aria-pressed="false"
+                title="Erase — drag a box to delete shapes, lines, images or text">Erase</button>
+      </div>
+
+      <div class="toolbar__group">
+        <button id="save-button" class="button" type="button" title="Save (Ctrl+S)">Save</button>
+        <button id="save-as-button" class="button" type="button" title="Save As (Ctrl+Shift+S)">Save As</button>
+      </div>
+
+      <label class="toolbar__toggle">
+        <input type="checkbox" id="stats-toggle" />
+        stats
+      </label>
+    </header>
+
+    <aside class="sidebar">
+      <div class="sidebar__title">Pages</div>
+      <div class="page-rail" id="page-rail"></div>
+    </aside>
+
+    <main class="viewport" id="viewport">
+      <div class="pages" id="pages"></div>
+
+      <div class="empty-state" id="empty-state">
+        <div class="empty-state__card">
+          <h1>Rpfg</h1>
+          <p>Open a PDF, or drop one onto this window.</p>
+          <button id="empty-open" class="button button--primary" type="button">Choose a file</button>
+          <p class="empty-state__hint">Ctrl+O to open &middot; Ctrl+scroll to zoom &middot; double-click text to edit</p>
+        </div>
+      </div>
+    </main>
+
+    <div class="stats-panel" id="stats-panel" hidden></div>
+    <div class="toast" id="toast" hidden></div>
+
+    <script type="module" src="js/main.js"></script>
+  </body>
+</html>
