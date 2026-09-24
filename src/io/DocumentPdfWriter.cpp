@@ -6,6 +6,10 @@
 #include <map>
 #include <string>
 
+#include "document/Document.h"
+#include "document/Page.h"
+#include "render/DocumentRenderer.h"
+
 namespace rpfg {
 namespace {
 
@@ -76,7 +80,7 @@ bool writeDocumentPdf(const PageModel& model, const std::string& path, std::stri
         fz_device* device = fz_begin_page(ctx, writer, mediabox);
         fz_colorspace* rgb = fz_device_rgb(ctx);
 
-        for (const Paragraph& paragraph : model.paragraphs) {
+        for (const StextParagraph& paragraph : model.paragraphs) {
             for (const Line& line : paragraph.lines) {
                 if (line.words.empty()) {
                     continue;
@@ -103,7 +107,7 @@ bool writeDocumentPdf(const PageModel& model, const std::string& path, std::stri
                 // page space (top-left origin, y down), so the baseline is used
                 // directly - no flip.
                 const fz_matrix trm =
-                    fz_make_matrix(size, 0.0f, 0.0f, size, line.x0, line.baseline);
+                    fz_make_matrix(size, 0.0f, 0.0f, -size, line.x0, line.baseline);
                 fz_text* text = fz_new_text(ctx);
                 fz_show_string(ctx, text, font, trm, line.text().c_str(), 0, 0, FZ_BIDI_UNSET,
                                static_cast<fz_text_language>(0));
@@ -133,6 +137,109 @@ bool writeDocumentPdf(const PageModel& model, const std::string& path, std::stri
     }
     for (auto& entry : fonts) {
         fz_drop_font(ctx, entry.second);
+    }
+    fz_drop_context(ctx);
+    return ok;
+}
+
+bool writeDocumentPdf(const Page& page, const std::string& path, std::string& error, const Document* doc) {
+    if (page.width() <= 0.0f || page.height() <= 0.0f) {
+        error = "the page has no dimensions";
+        return false;
+    }
+
+    fz_context* ctx = fz_new_context(nullptr, nullptr, FZ_STORE_DEFAULT);
+    if (ctx == nullptr) {
+        error = "could not create a MuPDF context";
+        return false;
+    }
+    fz_register_document_handlers(ctx);
+
+    std::map<std::string, fz_font*> fontCache;
+    fz_document_writer* writer = nullptr;
+    bool ok = false;
+
+    fz_try(ctx) {
+        writer = fz_new_document_writer(ctx, path.c_str(), "pdf", "compress");
+        const fz_rect mediabox = fz_make_rect(0.0f, 0.0f, page.width(), page.height());
+        fz_device* device = fz_begin_page(ctx, writer, mediabox);
+
+        renderPageToDevice(ctx, device, page, fz_identity, doc, fontCache);
+
+        fz_end_page(ctx, writer);
+        fz_close_document_writer(ctx, writer);
+        writer = nullptr;
+        ok = true;
+    }
+    fz_catch(ctx) {
+        error = fz_caught_message(ctx);
+        ok = false;
+    }
+
+    if (writer != nullptr) {
+        fz_try(ctx) {
+            fz_drop_document_writer(ctx, writer);
+        }
+        fz_catch(ctx) {
+        }
+    }
+    for (auto& entry : fontCache) {
+        if (entry.second != nullptr) {
+            fz_drop_font(ctx, entry.second);
+        }
+    }
+    fz_drop_context(ctx);
+    return ok;
+}
+
+bool writeDocumentPdf(const Document& doc, const std::string& path, std::string& error) {
+    if (doc.pages().empty()) {
+        error = "document has no pages";
+        return false;
+    }
+
+    fz_context* ctx = fz_new_context(nullptr, nullptr, FZ_STORE_DEFAULT);
+    if (ctx == nullptr) {
+        error = "could not create a MuPDF context";
+        return false;
+    }
+    fz_register_document_handlers(ctx);
+
+    std::map<std::string, fz_font*> fontCache;
+    fz_document_writer* writer = nullptr;
+    bool ok = false;
+
+    fz_try(ctx) {
+        writer = fz_new_document_writer(ctx, path.c_str(), "pdf", "compress");
+        for (const auto& page : doc.pages()) {
+            if (!page) continue;
+            const fz_rect mediabox = fz_make_rect(0.0f, 0.0f, page->width(), page->height());
+            fz_device* device = fz_begin_page(ctx, writer, mediabox);
+
+            renderPageToDevice(ctx, device, *page, fz_identity, &doc, fontCache);
+
+            fz_end_page(ctx, writer);
+        }
+        fz_close_document_writer(ctx, writer);
+        writer = nullptr;
+        ok = true;
+    }
+    fz_catch(ctx) {
+        error = fz_caught_message(ctx);
+        ok = false;
+    }
+
+    if (writer != nullptr) {
+        fz_try(ctx) {
+            fz_drop_document_writer(ctx, writer);
+        }
+        fz_catch(ctx) {
+        }
+    }
+    for (auto& entry : fontCache) {
+        if (entry.second != nullptr) {
+            fz_drop_font(ctx, entry.second);
+        }
     }
     fz_drop_context(ctx);
     return ok;

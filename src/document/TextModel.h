@@ -52,7 +52,7 @@ struct Line {
     std::string text() const;
 };
 
-struct Paragraph {
+struct StextParagraph {
     std::vector<Line> lines;
     float x0 = 0.0f;
     float y0 = 0.0f;
@@ -67,7 +67,7 @@ struct PageModel {
     float width = 0.0f;
     float height = 0.0f;
     std::vector<Glyph> glyphs;
-    std::vector<Paragraph> paragraphs;
+    std::vector<StextParagraph> paragraphs;
 };
 
 // Tolerances are all expressed as fractions of the local font size, so they

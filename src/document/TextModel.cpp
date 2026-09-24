@@ -28,7 +28,7 @@ std::string Line::text() const {
     return out;
 }
 
-std::string Paragraph::text() const {
+std::string StextParagraph::text() const {
     std::string out;
     for (const Line& line : lines) {
         if (!out.empty()) {
@@ -198,7 +198,7 @@ PageModel buildPageModel(const std::vector<Glyph>& glyphs,
     for (const Line& line : lines) {
         bool newParagraph = model.paragraphs.empty();
         if (!newParagraph) {
-            const Paragraph& previous = model.paragraphs.back();
+            const StextParagraph& previous = model.paragraphs.back();
             const Line& previousLine = previous.lines.back();
             const float sizeDelta = std::abs(line.size - previousLine.size) /
                                     std::max(1.0f, std::max(line.size, previousLine.size));
@@ -211,7 +211,7 @@ PageModel buildPageModel(const std::vector<Glyph>& glyphs,
                            indent > tolerances.indentFactor * line.size;
         }
         if (newParagraph) {
-            Paragraph paragraph;
+            StextParagraph paragraph;
             paragraph.size = line.size;
             paragraph.x0 = line.x0;
             paragraph.y0 = line.y0;
@@ -220,7 +220,7 @@ PageModel buildPageModel(const std::vector<Glyph>& glyphs,
             paragraph.lines.push_back(line);
             model.paragraphs.push_back(std::move(paragraph));
         } else {
-            Paragraph& paragraph = model.paragraphs.back();
+            StextParagraph& paragraph = model.paragraphs.back();
             const float baseline = paragraph.lines.front().baseline;
             paragraph.lines.push_back(line);
             paragraph.leading = (line.baseline - baseline) /

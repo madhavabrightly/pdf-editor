@@ -18,7 +18,9 @@
 #include <mutex>
 #include <string>
 
+#include "document/Document.h"
 #include "document/TextModel.h"
+#include "import/PdfDocumentImporter.h"
 #include "io/DocumentPdfWriter.h"
 #include "pdf/PdfEngine.h"
 #include "render/PageCompare.h"
@@ -90,7 +92,15 @@ int main(int argc, char** argv) {
 
     // ---- 2. export ---------------------------------------------------------
     std::string error;
-    if (!rpfg::writeDocumentPdf(*model, output, error)) {
+    rpfg::PdfDocumentImporter docImporter;
+    auto doc = docImporter.importDocument(source, error);
+    bool exportOk = false;
+    if (doc && !doc->pages().empty()) {
+        exportOk = rpfg::writeDocumentPdf(*doc->pages()[0], output, error, doc.get());
+    } else {
+        exportOk = rpfg::writeDocumentPdf(*model, output, error);
+    }
+    if (!exportOk) {
         std::fprintf(stderr, "FAIL: export failed: %s\n", error.c_str());
         return 1;
     }
@@ -124,7 +134,7 @@ int main(int argc, char** argv) {
     // This is what proves the text itself was reconstructed and re-laid out.
     std::size_t differing = 0;
     std::size_t considered = 0;
-    for (const rpfg::Paragraph& paragraph : model->paragraphs) {
+    for (const rpfg::StextParagraph& paragraph : model->paragraphs) {
         for (const rpfg::Line& line : paragraph.lines) {
             for (const rpfg::Word& word : line.words) {
                 const int x0 = std::max(0, static_cast<int>(std::floor(word.x0)) - 1);
@@ -161,7 +171,7 @@ int main(int argc, char** argv) {
     }
     std::printf("REOPEN: %zu paragraphs\n", reopenedModel->paragraphs.size());
     for (std::size_t i = 0; i < reopenedModel->paragraphs.size(); ++i) {
-        const rpfg::Paragraph& paragraph = reopenedModel->paragraphs[i];
+        const rpfg::StextParagraph& paragraph = reopenedModel->paragraphs[i];
         const float baseline =
             paragraph.lines.empty() || paragraph.lines.front().words.empty()
                 ? 0.0f
@@ -183,8 +193,8 @@ int main(int argc, char** argv) {
     float maxPositionDelta = 0.0f;
     float maxSizeDelta = 0.0f;
     for (std::size_t pi = 0; pi < model->paragraphs.size(); ++pi) {
-        const rpfg::Paragraph& before = model->paragraphs[pi];
-        const rpfg::Paragraph& after = reopenedModel->paragraphs[pi];
+        const rpfg::StextParagraph& before = model->paragraphs[pi];
+        const rpfg::StextParagraph& after = reopenedModel->paragraphs[pi];
         for (std::size_t li = 0; li < before.lines.size() && li < after.lines.size(); ++li) {
             const rpfg::Line& beforeLine = before.lines[li];
             const rpfg::Line& afterLine = after.lines[li];

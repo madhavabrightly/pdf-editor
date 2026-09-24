@@ -12,6 +12,16 @@
 #include <string>
 
 #include "pdf/PdfEngine.h"
+#include "document/Document.h"
+#include "document/Page.h"
+#include "document/TextFrame.h"
+#include "document/Paragraph.h"
+#include "document/TextRun.h"
+#include "document/LineObject.h"
+#include "document/ShapeObject.h"
+#include "document/VectorObject.h"
+#include "document/ImageObject.h"
+#include "document/ProtectedObject.h"
 
 namespace {
 
@@ -64,7 +74,7 @@ int main(int argc, char** argv) {
     // The generator draws one heading and one smaller line, well apart.
     std::printf("glyphs=%zu paragraphs=%zu\n", model->glyphs.size(), model->paragraphs.size());
     for (std::size_t i = 0; i < model->paragraphs.size(); ++i) {
-        const rpfg::Paragraph& paragraph = model->paragraphs[i];
+        const rpfg::StextParagraph& paragraph = model->paragraphs[i];
         std::printf("  paragraph %zu: lines=%zu size=%.1f leading=%.1f text=\"%s\"\n", i,
                     paragraph.lines.size(), paragraph.size, paragraph.leading,
                     paragraph.text().c_str());
@@ -80,7 +90,7 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    const rpfg::Paragraph& heading = model->paragraphs[0];
+    const rpfg::StextParagraph& heading = model->paragraphs[0];
     if (heading.lines.size() != 1 || heading.lines.front().words.size() != 5) {
         std::fprintf(stderr, "FAIL: heading structure wrong (%zu lines, %zu words)\n",
                      heading.lines.size(), heading.lines.front().words.size());
@@ -96,7 +106,7 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    const rpfg::Paragraph& body = model->paragraphs[1];
+    const rpfg::StextParagraph& body = model->paragraphs[1];
     if (body.text().find("rasterised by MuPDF") == std::string::npos) {
         std::fprintf(stderr, "FAIL: body text is \"%s\"\n", body.text().c_str());
         return 1;
@@ -142,6 +152,138 @@ int main(int argc, char** argv) {
         }
     }
 
-    std::printf("PASS\n");
+    // =========================================================================
+    // SECTION 8 & DOCUMENT MODEL TESTS: Exact Spaces & Real Unicode Hierarchy
+    // =========================================================================
+    {
+        // 1. TextRun with exact multiple spaces ("AI  Systems" has 2 spaces)
+        const std::string textWithTwoSpaces = "AI  Systems";
+        rpfg::TextRun run(textWithTwoSpaces);
+        if (run.length() != 11) {
+            std::fprintf(stderr, "FAIL: TextRun length %zu != 11\n", run.length());
+            return 1;
+        }
+        if (run.text()[2] != U' ' || run.text()[3] != U' ') {
+            std::fprintf(stderr, "FAIL: TextRun does not contain exact two spaces\n");
+            return 1;
+        }
+        if (run.textUtf8() != "AI  Systems") {
+            std::fprintf(stderr, "FAIL: TextRun UTF-8 is '%s'\n", run.textUtf8().c_str());
+            return 1;
+        }
+        std::printf("PASS: Section 8 - TextRun preserves exact multiple spaces\n");
+
+        // 2. Character editing: "AI Systems Architect" -> insert "Senior "
+        rpfg::Paragraph p("AI Systems Architect");
+        // offset 3 is after "AI "
+        p.insertTextUtf8(3, "Senior ");
+        if (p.textUtf8() != "AI Senior Systems Architect") {
+            std::fprintf(stderr, "FAIL: insertion gave '%s'\n", p.textUtf8().c_str());
+            return 1;
+        }
+        std::printf("PASS: Acceptance Test B - in-model character insertion: '%s'\n", p.textUtf8().c_str());
+
+        // 3. Space editing: delete space -> "AISystems Architect"
+        // in "AI Senior Systems Architect", delete space between "AI" and "Senior" (offset 2)
+        p.deleteText(2, 1);
+        if (p.textUtf8() != "AISenior Systems Architect") {
+            std::fprintf(stderr, "FAIL: delete space gave '%s'\n", p.textUtf8().c_str());
+            return 1;
+        }
+
+        // Reset to "AI Systems Architect"
+        rpfg::Paragraph p2("AI Systems Architect");
+        // Delete space at index 2 -> "AISystems Architect"
+        p2.deleteText(2, 1);
+        if (p2.textUtf8() != "AISystems Architect") {
+            std::fprintf(stderr, "FAIL: delete space gave '%s'\n", p2.textUtf8().c_str());
+            return 1;
+        }
+        // Insert two spaces back at index 2 -> "AI  Systems Architect"
+        p2.insertTextUtf8(2, "  ");
+        if (p2.textUtf8() != "AI  Systems Architect") {
+            std::fprintf(stderr, "FAIL: insert two spaces gave '%s'\n", p2.textUtf8().c_str());
+            return 1;
+        }
+        if (p2.textU32()[2] != U' ' || p2.textU32()[3] != U' ') {
+            std::fprintf(stderr, "FAIL: p2 text does not have two spaces at index 2 and 3\n");
+            return 1;
+        }
+        std::printf("PASS: Acceptance Test C - exact space deletion and multi-space insertion: '%s'\n", p2.textUtf8().c_str());
+
+        // 4. Word replacement: "Python Engineer" -> replace "Engineer" with "Developer"
+        rpfg::Paragraph p3("Python Engineer");
+        // "Python " has length 7. "Engineer" is 8 chars.
+        p3.deleteText(7, 8);
+        p3.insertTextUtf8(7, "Developer");
+        if (p3.textUtf8() != "Python Developer") {
+            std::fprintf(stderr, "FAIL: word edit gave '%s'\n", p3.textUtf8().c_str());
+            return 1;
+        }
+        std::printf("PASS: Acceptance Test D - word edit: '%s'\n", p3.textUtf8().c_str());
+
+        // 5. Paragraph split & merge
+        rpfg::Paragraph p4("First Line Text. Second Line Text.");
+        rpfg::Paragraph pTail = p4.split(17); // splits before "Second"
+        if (p4.textUtf8() != "First Line Text. " || pTail.textUtf8() != "Second Line Text.") {
+            std::fprintf(stderr, "FAIL: split gave '%s' and '%s'\n", p4.textUtf8().c_str(), pTail.textUtf8().c_str());
+            return 1;
+        }
+        p4.merge(std::move(pTail));
+        if (p4.textUtf8() != "First Line Text. Second Line Text.") {
+            std::fprintf(stderr, "FAIL: merge gave '%s'\n", p4.textUtf8().c_str());
+            return 1;
+        }
+        std::printf("PASS: Paragraph split and merge\n");
+
+        // 6. Complete Document hierarchy & Object Model (Sections 6, 24)
+        rpfg::Document doc;
+        auto page = std::make_shared<rpfg::Page>(612.0f, 792.0f, 0);
+
+        // TextFrame
+        auto frame = std::make_shared<rpfg::TextFrame>(rpfg::Rect{50.0f, 50.0f, 500.0f, 700.0f});
+        frame->addParagraph(std::move(p4));
+        page->addObject(frame);
+
+        // LineObject
+        auto lineObj = std::make_shared<rpfg::LineObject>(rpfg::Point{50.0f, 100.0f}, rpfg::Point{500.0f, 100.0f}, rpfg::Color::black(), 1.5f);
+        page->addObject(lineObj);
+
+        // ShapeObject
+        auto rectObj = std::make_shared<rpfg::ShapeObject>(rpfg::ShapeType::Rectangle, rpfg::Rect{60.0f, 120.0f, 200.0f, 180.0f});
+        page->addObject(rectObj);
+
+        // VectorObject
+        auto vecObj = std::make_shared<rpfg::VectorObject>();
+        vecObj->appendCommand(rpfg::PathCommand{rpfg::PathVerb::MoveTo, rpfg::Point{10.0f, 10.0f}});
+        vecObj->appendCommand(rpfg::PathCommand{rpfg::PathVerb::LineTo, rpfg::Point{20.0f, 30.0f}});
+        vecObj->appendCommand(rpfg::PathCommand{rpfg::PathVerb::Close});
+        page->addObject(vecObj);
+
+        // ProtectedObject
+        auto protObj = std::make_shared<rpfg::ProtectedObject>(rpfg::Rect{0.0f, 0.0f, 100.0f, 100.0f}, "unsupported shading pattern", 42);
+        page->addObject(protObj);
+
+        doc.addPage(page);
+
+        if (doc.pageCount() != 1) {
+            std::fprintf(stderr, "FAIL: doc pageCount is %zu\n", doc.pageCount());
+            return 1;
+        }
+        if (doc.page(0)->objects().size() != 5) {
+            std::fprintf(stderr, "FAIL: page object count is %zu != 5\n", doc.page(0)->objects().size());
+            return 1;
+        }
+
+        // Test deep clone
+        auto clonedDoc = doc.clone();
+        if (clonedDoc->pageCount() != 1 || clonedDoc->page(0)->objects().size() != 5) {
+            std::fprintf(stderr, "FAIL: cloned doc objects wrong\n");
+            return 1;
+        }
+        std::printf("PASS: Document hierarchy, polymorphism, and cloning (TextFrame, Line, Shape, Vector, Protected)\n");
+    }
+
+    std::printf("ALL MODEL TESTS PASSED\n");
     return 0;
 }

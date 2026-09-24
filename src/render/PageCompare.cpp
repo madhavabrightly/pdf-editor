@@ -98,4 +98,63 @@ double imageDifferenceFraction(const GrayImage& a, const GrayImage& b, int toler
     return static_cast<double>(differing) / static_cast<double>(a.pixels.size());
 }
 
+VisualDiffResult compareImagesDetailed(const GrayImage& original, const GrayImage& editable, int tolerance) {
+    VisualDiffResult res;
+    if (original.width != editable.width || original.height != editable.height ||
+        original.pixels.size() != editable.pixels.size() || original.pixels.empty()) {
+        res.differenceFraction = 1.0;
+        res.similarityScore = 0.0;
+        return res;
+    }
+
+    const int w = original.width;
+    const int h = original.height;
+    res.totalPixels = original.pixels.size();
+    res.diffRgbPixels.resize(res.totalPixels * 3);
+
+    int minDiffX = w, minDiffY = h, maxDiffX = -1, maxDiffY = -1;
+
+    for (int y = 0; y < h; ++y) {
+        for (int x = 0; x < w; ++x) {
+            const std::size_t idx = static_cast<std::size_t>(y) * w + x;
+            const unsigned char pOrig = original.pixels[idx];
+            const unsigned char pEdit = editable.pixels[idx];
+            const int delta = std::abs(static_cast<int>(pOrig) - static_cast<int>(pEdit));
+
+            const std::size_t rgbIdx = idx * 3;
+            if (delta > tolerance) {
+                ++res.differingPixels;
+                minDiffX = std::min(minDiffX, x);
+                minDiffY = std::min(minDiffY, y);
+                maxDiffX = std::max(maxDiffX, x);
+                maxDiffY = std::max(maxDiffY, y);
+
+                // Highlight differing pixel in red
+                res.diffRgbPixels[rgbIdx + 0] = 255;
+                res.diffRgbPixels[rgbIdx + 1] = 0;
+                res.diffRgbPixels[rgbIdx + 2] = 0;
+            } else {
+                // Dim original in grayscale
+                res.diffRgbPixels[rgbIdx + 0] = pOrig;
+                res.diffRgbPixels[rgbIdx + 1] = pOrig;
+                res.diffRgbPixels[rgbIdx + 2] = pOrig;
+            }
+        }
+    }
+
+    res.differenceFraction = static_cast<double>(res.differingPixels) / static_cast<double>(res.totalPixels);
+    res.similarityScore = 1.0 - res.differenceFraction;
+
+    if (minDiffX <= maxDiffX && minDiffY <= maxDiffY) {
+        res.differenceBoundingBox = Rect{
+            static_cast<float>(minDiffX),
+            static_cast<float>(minDiffY),
+            static_cast<float>(maxDiffX + 1),
+            static_cast<float>(maxDiffY + 1)
+        };
+    }
+
+    return res;
+}
+
 }  // namespace rpfg

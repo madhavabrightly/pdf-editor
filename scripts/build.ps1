@@ -13,7 +13,8 @@ param(
     [switch]$Run,
     [switch]$Clean,
     [switch]$SkipDeps,
-    [switch]$RebuildMuPdf
+    [switch]$RebuildMuPdf,
+    [string]$Target = ""
 )
 
 . "$PSScriptRoot\config.ps1"
@@ -69,11 +70,15 @@ $configureArgs = @(
 if ($LASTEXITCODE -ne 0) { throw "CMake configure failed." }
 
 Write-Step "Building Rpfg"
-& cmake --build $BuildDir
+if ($Target) {
+    & cmake --build $BuildDir --target $Target
+} else {
+    & cmake --build $BuildDir
+}
 if ($LASTEXITCODE -ne 0) { throw "Build failed." }
 
 $exe = Join-Path $BuildDir "Rpfg.exe"
-if (-not (Test-Path $exe)) { throw "Expected $exe to exist." }
+if (-not $Target -and -not (Test-Path $exe)) { throw "Expected $exe to exist." }
 
 Write-Host ""
 Write-Host "Built $exe" -ForegroundColor Green

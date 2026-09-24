@@ -62,6 +62,14 @@ file(GLOB_RECURSE RPFG_CORE_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/pdf/*.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/document/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/document/*.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/import/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/import/*.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/layout/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/layout/*.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/editor/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/editor/*.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/export/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/export/*.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/io/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/io/*.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/render/*.cpp"
@@ -140,6 +148,18 @@ target_link_libraries(rpfg_model_test PRIVATE rpfg_core)
 add_executable(rpfg_roundtrip_test "${CMAKE_CURRENT_SOURCE_DIR}/tests/roundtrip_test.cpp")
 target_compile_options(rpfg_roundtrip_test PRIVATE ${RPFG_WARNINGS})
 target_link_libraries(rpfg_roundtrip_test PRIVATE rpfg_core)
+
+add_executable(rpfg_import_test "${CMAKE_CURRENT_SOURCE_DIR}/tests/import_test.cpp")
+target_compile_options(rpfg_import_test PRIVATE ${RPFG_WARNINGS})
+target_link_libraries(rpfg_import_test PRIVATE rpfg_core)
+
+add_executable(rpfg_visual_test "${CMAKE_CURRENT_SOURCE_DIR}/tests/visual_fidelity_test.cpp")
+target_compile_options(rpfg_visual_test PRIVATE ${RPFG_WARNINGS})
+target_link_libraries(rpfg_visual_test PRIVATE rpfg_core)
+
+add_executable(rpfg_editor_test "${CMAKE_CURRENT_SOURCE_DIR}/tests/editor_test.cpp")
+target_compile_options(rpfg_editor_test PRIVATE ${RPFG_WARNINGS})
+target_link_libraries(rpfg_editor_test PRIVATE rpfg_core)
 
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
     target_compile_options(rpfg_core PRIVATE /O2 /Oi /Gy)
